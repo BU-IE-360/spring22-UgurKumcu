@@ -1,0 +1,294 @@
+---
+title: "IE360 Homework 1"
+author: "Ugur Kumcu"
+date: '2022-04-07'
+output: html_document
+---
+
+
+## 1 - INTRODUCTION
+
+  First of all, I must state that I wanted to examine the change in the price of people's basic needs over the years. I thought to examine the food-related ones, which are at the top of these basic needs. Then I wondered about the relationship between the Turkish stock market and the increase in these basic needs. That's why I used 4 different data from https://evds2.tcmb.gov.tr/ and https://trends.google.com/trends/. 
+
+Names of these data: 
+
+* Bist100 
+
+* CPI for non-alcoholic food
+
+* Credit Card Total Expenditure Amount for Various Food
+
+* Search for "Food Prices"
+
+The question I am really curious about is this: __How much is the increase in food prices and expenditures correlated with the CPI? Has the return of the Turkish stock market (Bist100) been able to cover this increase in food prices?__
+In order to get the answers to these questions, I will look at the monthly data between 2015 and 2022. I will plot different types of graphs for every data individually. 
+
+
+
+### Used Packages
+```{r message=FALSE, warning=FALSE}
+library(zoo,warn.conflicts = FALSE)
+library(readxl)
+library(ggplot2)
+library(lubridate)
+library(corrplot)
+```
+
+
+I get all the data related to the answer to my question from the sites I specified and assign them to the variables.
+
+```{r}
+Bist <- read_excel("Bist.xlsx")
+VariousFood <- read_excel("VariousFood.xlsx")
+CPI <- read_excel("CPI.xlsx")
+FoodSearch <- read.csv("FoodSearch.csv")
+```
+
+I changed the data type of the date parts to use the data better.
+
+```{r}
+Bist$Date <- as.yearmon(Bist$Date)
+VariousFood$Date <- as.yearmon(VariousFood$Date)
+CPI$Date <- as.yearmon(CPI$Date)
+FoodSearch$Date <- as.yearmon(FoodSearch$Date)
+```
+
+
+## 2 - Bist100 Closing Prices (2015-2022) Monthly
+
+### 2.1 - General Summary
+```{r}
+summary(Bist$Closing_Price)
+## Unit is Turkish Lira
+```
+
+```{r}
+head(Bist, 12)
+## First Year Data
+```
+
+
+```{r}
+tail(Bist, 12)
+## Last Year Data
+```
+
+### 2.2 - Plotted Data
+```{r}
+ggplot(Bist, aes(Date, Closing_Price)) +
+geom_line(data = Bist, color="blue", linetype = "solid") +
+ggtitle("Bist100 Closing Price") +
+xlab("Date (Monthly)") + 
+ylab("Closing Price") +
+theme_linedraw()
+## Data Plotting 
+```
+### 2.3 - Box-Plotted Data
+
+```{r}
+ggplot(Bist, aes(x=factor(year(Date)),y=Closing_Price)) + 
+geom_boxplot(aes(fill=factor(year(Date)))) + 
+xlab("Years") + ylab("Closing Prices") + 
+ggtitle("Bist100 Closing Prices") +
+theme_linedraw() + theme(legend.position = "none")
+
+```
+
+### 2.4 - Histogram Data
+
+```{r}
+hist(Bist$Closing_Price, 
+     main="Histogram for Bist100 Closing Price", 
+     xlab="Closing Price", 
+     border="purple", 
+     col="green",
+     las=1, 
+     breaks=5)
+```
+
+## 3 - Total Expenditure Amount for Various Food (2015-2022) Monthly
+
+### 3.1 - General Summary
+```{r}
+summary(VariousFood$Total_Expenditure)
+## (Thousand TRY)
+```
+
+```{r}
+head(VariousFood, 12)
+## First Year Data
+```
+
+
+```{r}
+tail(VariousFood, 12)
+## Last Year Data
+```
+
+### 3.2 - Plotted Data
+```{r}
+ggplot(VariousFood, aes(Date, Total_Expenditure)) +
+geom_line(data = VariousFood, color="blue", linetype = "solid") +
+ggtitle("Total Expenditure Amount for Various Food") +
+xlab("Date (Monthly)") + 
+ylab("Total Expenditure (Thousand TRY)") +
+theme_linedraw()
+## Data Plotting 
+```
+### 3.3 - Box-Plotted Data
+
+```{r}
+ggplot(VariousFood, aes(x=factor(year(Date)),y=Total_Expenditure)) +
+geom_boxplot(aes(fill=factor(year(Date)))) + 
+xlab("Years") + ylab("Total Expenditure (Thousand TRY)") + 
+ggtitle("Total Expenditure Amount for Various Food") +
+theme_linedraw() + theme(legend.position = "none")
+
+```
+
+
+### 3.4 - Histogram Data
+
+```{r}
+hist(VariousFood$Total_Expenditure, 
+     main="Histogram for Total Expenditure for Food", 
+     xlab="Total Expenditure", 
+     border="purple", 
+     col="green",
+     las=1, 
+     breaks=5)
+
+```
+
+## 4 - CPI for Food and non-alcoholic Beverages (2015-2022) Monthly
+
+### 4.1 - General Summary
+
+In the calculation of this data, a basket of food and non-alcoholic beverages that people consume monthly is created. This basket could be bought for 100 TL in 2003. This data is the data of how much this basket costs according to the months. Note: The contents of the basket and their weights have been rearranged by law.
+
+```{r}
+summary(CPI$CPI)
+## (Unit is Turkish Lira)
+```
+
+```{r}
+head(CPI, 12)
+## First Year Data
+```
+```{r}
+tail(CPI, 12)
+## Last Year Data
+```
+### 4.2 - Plotted Data
+```{r}
+ggplot(CPI, aes(Date, CPI)) +
+geom_line(data = CPI, color="blue", linetype = "solid") +
+ggtitle("CPI for Food and non-alcoholic Beverages") +
+xlab("Date (Monthly)") + 
+ylab("CPI (TL)") +
+theme_linedraw()
+## Data Plotting 
+```
+
+### 4.3 - Box-Plotted Data
+
+```{r}
+ggplot(CPI, aes(x=factor(year(Date)),y=CPI)) +
+geom_boxplot(aes(fill=factor(year(Date)))) + 
+xlab("Years") + ylab("CPI (TL)") + 
+ggtitle("CPI for Food and non-alcoholic Beverages") +
+theme_linedraw() + theme(legend.position = "none")
+
+```
+
+
+### 4.4 - Histogram Data
+
+```{r}
+hist(CPI$CPI, 
+     main="Histogram for CPI", 
+     xlab="CPI", 
+     border="purple", 
+     col="green",
+     las=1, 
+     breaks=5)
+```
+
+## 5 - Google Trends Result for "Gıda Fiyatları" (2015-2022) Monthly
+
+### 5.1 - General Summary
+```{r}
+summary(FoodSearch$Index)
+```
+
+```{r}
+head(FoodSearch, 12)
+## First Year Data
+```
+
+
+```{r}
+tail(FoodSearch, 12)
+## Last Year Data
+```
+
+### 5.2 - Plotted Data
+```{r}
+ggplot(FoodSearch, aes(Date, Index)) +
+geom_line(data = FoodSearch, color="blue", linetype = "solid") +
+ggtitle("Google Trends Results for 'Gıda Fiyatları'") +
+xlab("Date (Monthly)") + 
+ylab("Index") +
+theme_linedraw()
+## Data Plotting 
+```
+### 5.3 - Box-Plotted Data
+
+```{r}
+ggplot(FoodSearch, aes(x=factor(year(Date)),y=Index)) + 
+geom_boxplot(aes(fill=factor(year(Date)))) + 
+xlab("Years") + ylab("Index") + 
+ggtitle("Google Trends Results for 'Gıda Fiyatları'") +
+theme_linedraw() + theme(legend.position = "none")
+
+```
+
+### 5.4 - Histogram Data
+
+```{r}
+hist(FoodSearch$Index, 
+     main="Histogram for Food Search", 
+     xlab="Food Search Index", 
+     border="purple", 
+     col="green",
+     las=1, 
+     breaks=5)
+
+```
+
+## 6 - CORRELATION MATRIX
+
+```{r}
+data <- data.frame( Bist$Closing_Price,  VariousFood$Total_Expenditure, CPI$CPI, FoodSearch$Index)
+names(data) <- c("Bist100", "Total_Expenditure", "CPI" , "Food Search")
+data_correlation = cor(data)
+corrplot(data_correlation, method="number")
+```
+
+
+## 7 - CONCLUSION
+
+At the beginning of my report, I tried to sketch all the related graphs individually in order to understand the data without using any mathematical formula. After sketching, I saw strong relationship between graphs. That's why I used correlation matrix at the end of my report.
+
+First of all, the Bist100 closing price seems increasing exponentially. I have listed first year and the last year data, the last year data is steeper than the first year data. I also summarized the data and checked min, max and mean values. 
+
+Secondly, I draw all the data related to food prices(CPI), expenditure and food searches. Additionally, checked their summaries and saw that all of them seems so related. 
+
+Lastly, I used corrplot function to understand level of the relationship between those data. All of the four data is strongly related based on corelation matrix because their correlation rate is higher that 0.70 but I expected more relationship between CPI and Total Expenditure Amount because the first one is calculated based on the second one. I think the main reason behind this result is changing the weights of foods in the basket. 
+
+In conclusion, Those data are highly correlated each other and increasing exponentially. 
+
+
+
+
+
