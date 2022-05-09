@@ -1,0 +1,149 @@
+---
+title: "IE360 Homework 2"
+author: "Ugur Kumcu"
+date: '2022-05-08'
+output: html_document
+---
+
+
+## 1 - INTRODUCTION
+
+  In this Homework, first of all, data will be sketched and then I am going to analyze the data using regression models. After all the analyzes done I will forecast the upcoming 4 quarters which represents the 2007.
+
+### Used Packages
+```{r message=FALSE, warning=FALSE}
+library(zoo,warn.conflicts = FALSE)
+library(readxl)
+library(ggplot2)
+library(lubridate)
+library(corrplot)
+require(data.table)
+require(GGally)
+require(forecast)
+```
+
+Reading Data
+
+```{r,include=TRUE, warning=FALSE, error=FALSE}
+data_path <- "IE360_Spring22_HW2_data.csv"
+data <- read.csv(data_path)
+data$Unleaded.Gasoline.Sale..UGS. = gsub(" ", "", data$Unleaded.Gasoline.Sale..UGS.)
+data$Unleaded.Gasoline.Sale..UGS. = as.numeric(data$Unleaded.Gasoline.Sale..UGS.)
+data$X..LPG.Vehicles..NLPG. = gsub(" ", "", data$X..LPG.Vehicles..NLPG.)
+data$X..LPG.Vehicles..NLPG. = as.numeric(data$X..LPG.Vehicles..NLPG)
+data$X..Unleaded.Gasoline.Vehicles..NUGV. = gsub(" ", "", data$X..Unleaded.Gasoline.Vehicles..NUGV.)
+data$X..Unleaded.Gasoline.Vehicles..NUGV. = as.numeric(data$X..Unleaded.Gasoline.Vehicles..NUGV.)
+data$GNP.Agriculture = gsub(" ", "", data$GNP.Agriculture)
+data$GNP.Agriculture = as.numeric(data$GNP.Agriculture)
+data$GNP.Commerce = gsub(" ", "", data$GNP.Commerce)
+data$GNP.Commerce = as.numeric(data$GNP.Commerce)
+data$GNP.Total = gsub(" ", "", data$GNP.Total)
+data$GNP.Total = as.numeric(data$GNP.Total)
+data$Quarter = as.character(data$Quarter)
+data = data.table(data)
+head(data,8)
+##First 2 years data
+```
+
+## 2 - Plotting & Commenting
+
+```{r,include=TRUE, warning=FALSE, error=FALSE}
+data$UGS = ts(data$Unleaded.Gasoline.Sale..UGS., start = 2000, deltat= 1/4)
+ggplot(data, aes(Quarter,data$Unleaded.Gasoline.Sale..UGS. , group=1)) + geom_line(color="red") +geom_point()+ ggtitle("UGS 2000-2006")
+##Basic plotting 
+```
+Basically, we can see decreasing trend and seasonality in the data. Also, variance is getting smaller at the end of the data. Because of these reasons this data is not stationary.
+```{r}
+acf(data$Unleaded.Gasoline.Sale..UGS.[0:28], 10, main="ACF up to 10 LAGS")
+## AutoCorrelation..
+```
+It can be seen that there is an autocorrelation in lag 4 which can be interpreted as there is an seasonality in the data.
+```{r}
+data[ , trend := 1 :.N]
+## Adding Trend to the Data
+seasonality_period <- 4
+data[ , seasonality := (1:.N) %% seasonality_period]  
+## Adding Seasonality to the Data.  
+data[seasonality == 0, seasonality := 4]
+## Arranging numbers to see the seasonality
+data$seasonality = as.factor(data$seasonality) 
+summary(data)
+```
+
+## 3 - Regression Models
+
+I am going to improve my model from scratch using other related variables in the data.
+```{r}
+Model_0 = lm(Unleaded.Gasoline.Sale..UGS.~trend ,data)
+## Initial base model
+checkresiduals(Model_0$residuals)
+summary(Model_0)
+```
+We need to add seasonality to the model
+```{r}
+Model_1 = lm(Unleaded.Gasoline.Sale..UGS.~trend + seasonality ,data)
+checkresiduals(Model_1$residuals)
+summary(Model_1)
+```
+Model_1's Autocorrelation seems better than the Model_0
+Now my main aim is to increase the Adjusted R square value using independent variables.
+```{r}
+Model_2 = lm(Unleaded.Gasoline.Sale..UGS.~trend + 
+            seasonality +
+            X..of.Diesel.Gasoline.Vehicles..NDGV. +
+            Price.of.Diesel.Gasoline..PG. +
+            X..Unleaded.Gasoline.Vehicles..NUGV.,
+data)
+checkresiduals(Model_2$residuals)
+summary(Model_2)
+```
+Just a small improvement in Adjusted R square value.
+```{r, warning=FALSE}
+setDT(data)
+data[,.(Lag_1 = shift(data$Unleaded.Gasoline.Sale..UGS.,fill=NA, n=1L))]
+data$Lag_1 = data[,.(Lag_2 = shift(data$Unleaded.Gasoline.Sale..UGS., fill=NA, n=1L))]
+Model_3 = lm(Unleaded.Gasoline.Sale..UGS.~trend + 
+            seasonality +
+            X..of.Diesel.Gasoline.Vehicles..NDGV. +
+            Price.of.Diesel.Gasoline..PG. +
+            X..Unleaded.Gasoline.Vehicles..NUGV. +
+            Lag_1,
+data)
+checkresiduals(Model_3$residuals)
+summary(Model_3)
+```
+Lagged variable is also added to data and improved our results.
+One can conclude that the Model_3 is better than the previous models. So my predictions will be based on the Model_3.
+
+## 4 - Predict year 2007
+
+Predicting..
+```{r}
+copy_data = copy(data)
+copy_data[,actual:=Unleaded.Gasoline.Sale..UGS.]
+copy_data[,prediction:=predict(Model_3,copy_data)]
+print(copy_data)
+copy_data[ 30, "Lag_1"] = 666210.0
+copy_data[,predicted:=predict(Model_3,copy_data)]
+print(copy_data)
+copy_data[ 31, "Lag_1"] = 840163.9
+copy_data[,predicted:=predict(Model_3,copy_data)]
+print(copy_data)
+copy_data[ 32, "Lag_1"] = 970373.9
+copy_data[,predicted:=predict(Model_3,copy_data)]
+
+```
+
+Plotting
+
+```{r, warning=FALSE}
+ggplot(copy_data ,aes(x=Quarter)) +
+geom_line(aes(y=actual,color='Real_Data', group = 1)) + 
+geom_line(aes(y=predicted, color = 'My_Prediction', group = 1) ) 
+print(copy_data$predicted)
+
+```
+
+## 5 - Conclusion
+
+I have sketched the main data to have a overall perspective. I have realized that the data has a decreasing trend and a seasonality. Therefore, I have concluded that this data is not stationary due to definition of the stationary. After that, I have created a regression model to predict the upcoming year's data using different techniques which are in "Regression Models" section. Lastly, I have sketched all of my predictions about 2007.  
